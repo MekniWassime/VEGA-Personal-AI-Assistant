@@ -1,0 +1,18 @@
+# Environment
+.env
+*.env.local
+
+# Go
+vega-backend/bin/
+vega-backend/*.exe
+vega-backend/*.test
+vega-backend/*.out
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp

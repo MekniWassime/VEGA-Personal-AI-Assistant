@@ -1,0 +1,18 @@
+name: vega
+
+services:
+  vega-db:
+    image: postgres:18-alpine
+    container_name: vega-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vega
+      POSTGRES_USER: vega
+      POSTGRES_PASSWORD: vega
+    ports:
+      - "5432:5432"
+    volumes:
+      - vega-db-data:/var/lib/postgresql/data
+
+volumes:
+  vega-db-data:
