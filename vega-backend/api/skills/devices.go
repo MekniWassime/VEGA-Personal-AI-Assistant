@@ -19,7 +19,7 @@ func (d *DevicesSkill) Info() *SkillPromptInfo {
 	return &promptInfo
 }
 
-type paramsSchema struct{}
+type devicesSchema struct{}
 
 func (d *DevicesSkill) Run(input string) (string, error) {
 	var devices = `

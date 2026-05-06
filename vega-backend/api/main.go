@@ -11,14 +11,14 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const userPrompt = "Give me the brand of my personal mobile phone, send this result to my macbook device"
+const userPrompt = "find the brand of my mobile device and send it to my macbook"
 
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
 
-	client := ai.NewOllamaAPI("qwen3-vl:8b")
+	client := ai.NewOllamaAPI("gemma3:4b")
 	fmt.Println("[main] client initialized")
 
 	conversation := []ai.Message{
@@ -54,7 +54,7 @@ func main() {
 			fmt.Printf("[main] skill result: %s\n", skillResult)
 			conversation = append(conversation, ai.Message{
 				Role:    "system",
-				Content: "Here is the result of the tool call you just executed:\n" + skillResult + "\nWith this result, continue your task based on the response.",
+				Content: skillResult,
 			})
 		} else {
 			fmt.Println("[main] no skill call detected, looping")
