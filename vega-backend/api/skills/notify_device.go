@@ -9,9 +9,9 @@ var notifyDeviceInfo = SkillPromptInfo{
 	Name:    "notify_device",
 	Summary: "send a notification message to a specific device by its identifier, Note that the user has no direct access to this conversation, you will often need to send them a notification with the result",
 	Content: `
-		Sends a notification to a client device.
-		Requires the device identifier (obtainable via list_devices) and a message string.
-	`,
+Sends a notification to a client device.
+Requires the device identifier (obtainable via list_devices) and a message string.
+`,
 	Example: `{"name": "notify_device", "params": {"device_id": "mobile_device_1", "message": "Hello!"}}`,
 }
 

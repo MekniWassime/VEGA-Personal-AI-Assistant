@@ -7,11 +7,11 @@ import (
 )
 
 const skillBasePrompt = `
-	You have access to these skills, These are tool calls that allow you to perform actions and interact with devices and external tools,
-	You would need to respond only with the tool call with no other text, only the tool call json should be present if you would like to call a tool
-	The system will notify you of the result of the tool call, if no notification was recieved, then your tool call format is wrong and you need to try again
-	If the response is marked as from "assistant" or "user" then its not the result of a tool call
-	Review the list of available skills carefully:
+You have access to these skills. These are tool calls that allow you to perform actions and interact with devices and external tools.
+You would need to respond only with the tool call with no other text, only the tool call JSON should be present if you would like to call a tool.
+The system will notify you of the result of the tool call. If no notification was received, then your tool call format is wrong and you need to try again.
+If the response is marked as from "assistant" or "user" then it is not the result of a tool call.
+Review the list of available skills carefully:
 `
 
 type SkillPromptInfo struct {
@@ -100,9 +100,9 @@ func runSkill(input string) (string, error) {
 func ParseAndRun(input string) string {
 	result, err := runSkill(input)
 	if err != nil {
-		return "The tool call failed with the following error:\n" + err.Error() + "\nFix the error and try the tool call again."
+		return "[TOOL CALL ERROR]\n" + err.Error() + "\n[END TOOL CALL ERROR]\nFix the error and try the tool call again."
 	}
-	return "Here is the result of the tool call you just executed:\n" + result + "\nWith this result, continue your task."
+	return "[TOOL CALL RESULT]\n" + result + "\n[END TOOL CALL RESULT]\nWith this result, continue your task."
 }
 
 func ParseAndMatch(input string) (*Skill, *ParseInput, error) {

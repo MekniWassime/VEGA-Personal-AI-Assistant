@@ -9,9 +9,9 @@ var skillDefinitionInfo = SkillPromptInfo{
 	Name:    "skill_definition",
 	Summary: `Before using any skill, call this first to get its full instructions, Do not try to guess skill parameters, always call this atleast one time per skill needed. Usage: {"name": "skill_definition", "params": {"skill_name": "<name>"}}. Example: {"name": "skill_definition", "params": {"skill_name": "list_devices"}}`,
 	Content: `
-		Returns a long description of a skill.
-		Use this to understand how to use a skill before calling it.
-	`,
+Returns a long description of a skill.
+Use this to understand how to use a skill before calling it.
+`,
 	Example: `{"name": "skill_definition", "params": {"skill_name": "list_devices"}}`,
 }
 
