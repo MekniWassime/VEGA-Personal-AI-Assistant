@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createContext = `-- name: CreateContext :one
+INSERT INTO contexts (conversation_id)
+VALUES ($1)
+RETURNING id, conversation_id, timestamp
+`
+
+func (q *Queries) CreateContext(ctx context.Context, conversationID pgtype.UUID) (Context, error) {
+	row := q.db.QueryRow(ctx, createContext, conversationID)
+	var i Context
+	err := row.Scan(&i.ID, &i.ConversationID, &i.Timestamp)
+	return i, err
+}
+
 const getContext = `-- name: GetContext :one
 SELECT id, conversation_id, timestamp FROM contexts
 WHERE id = $1

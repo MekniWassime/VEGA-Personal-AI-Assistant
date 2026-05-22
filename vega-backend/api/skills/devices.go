@@ -2,9 +2,9 @@ package skills
 
 var promptInfo = SkillPromptInfo{
 	Name:    "list_devices",
-	Summary: "list client device identifiers and information — you will need these identifiers to execute skills on client devices",
+	Summary: "list the user's device identifiers and information — you will need these identifiers to execute skills on the user's devices",
 	Content: `
-Returns a list of client device identifiers and a short description of each.
+Returns a list of the user's device identifiers and a short description of each.
 Use these identifiers when executing skills that target a specific device.
 `,
 	Example: `{"name": "list_devices"}`,

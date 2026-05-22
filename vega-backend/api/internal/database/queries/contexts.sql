@@ -1,3 +1,8 @@
+-- name: CreateContext :one
+INSERT INTO contexts (conversation_id)
+VALUES ($1)
+RETURNING *;
+
 -- name: GetContext :one
 SELECT * FROM contexts
 WHERE id = $1;

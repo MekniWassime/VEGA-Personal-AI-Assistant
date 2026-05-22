@@ -8,8 +8,8 @@ import (
 
 const skillBasePrompt = `
 You have access to these skills. These are tool calls that allow you to perform actions and interact with devices and external tools.
-You would need to respond only with the tool call with no other text, only the tool call JSON should be present if you would like to call a tool.
-The system will notify you of the result of the tool call. If no notification was received, then your tool call format is wrong and you need to try again.
+To call a skill, wrap the JSON in a <tool_call> tag anywhere in your message: <tool_call>{"name": "skill_name", "arguments": {...}}</tool_call>
+The system will notify you of the result. If no notification was received, your tool call format is wrong — try again.
 If the response is marked as from "assistant" or "user" then it is not the result of a tool call.
 Review the list of available skills carefully:
 `
@@ -56,7 +56,7 @@ var SkillsPrompt = buildSkillsPrompt()
 
 type ParseInput struct {
 	Name   string          `json:"name"`
-	Params json.RawMessage `json:"params"`
+	Arguments json.RawMessage `json:"arguments"`
 }
 
 // ExtractSkillCall tries to find a skill call in common AI response formats.
@@ -64,8 +64,21 @@ type ParseInput struct {
 func ExtractSkillCall(content string) (string, bool) {
 	s := strings.TrimSpace(content)
 
-	// if content contains a code fence, slice from the first { to the closing ```
-	if idx := strings.Index(s, "```"); idx != -1 {
+	// strip <think>...</think> blocks emitted by reasoning models
+	if start := strings.Index(s, "<think>"); start != -1 {
+		if end := strings.Index(s, "</think>"); end != -1 {
+			s = strings.TrimSpace(s[:start] + s[end+len("</think>"):])
+		}
+	}
+
+	// prefer <tool_call>...</tool_call> tags
+	if start := strings.Index(s, "<tool_call>"); start != -1 {
+		after := s[start+len("<tool_call>"):]
+		if end := strings.Index(after, "</tool_call>"); end != -1 {
+			s = strings.TrimSpace(after[:end])
+		}
+	} else if idx := strings.Index(s, "```"); idx != -1 {
+		// fall back to code fence
 		after := s[idx:]
 		if start := strings.Index(after, "{"); start != -1 {
 			after = after[start:]
@@ -94,7 +107,7 @@ func runSkill(input string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return (*skill).Run(string(parsed.Params))
+	return (*skill).Run(string(parsed.Arguments))
 }
 
 func ParseAndRun(input string) string {

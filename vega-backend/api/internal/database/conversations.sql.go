@@ -11,6 +11,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createConversation = `-- name: CreateConversation :one
+INSERT INTO conversations (type)
+VALUES ($1)
+RETURNING id, state, type, created_at, updated_at
+`
+
+func (q *Queries) CreateConversation(ctx context.Context, type_ ConversationType) (Conversation, error) {
+	row := q.db.QueryRow(ctx, createConversation, type_)
+	var i Conversation
+	err := row.Scan(
+		&i.ID,
+		&i.State,
+		&i.Type,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getConversation = `-- name: GetConversation :one
 SELECT id, state, type, created_at, updated_at FROM conversations
 WHERE id = $1
