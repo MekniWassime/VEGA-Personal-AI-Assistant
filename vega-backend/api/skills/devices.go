@@ -18,10 +18,10 @@ func (d *DevicesSkill) Info() *SkillPromptInfo {
 
 type devicesSchema struct{}
 
-func (d *DevicesSkill) Run(input string) (string, error) {
+func (d *DevicesSkill) Run(input string) (RunResult, error) {
 	var devices = `[
 {"id": "mobile_device_1", "description": "my personal samsung mobile phone"},
 {"id": "macbook_work_1", "description": "my work macbook pro that I also use for personal stuff"}
 ]`
-	return devices, nil
+	return RunResult{Content: devices}, nil
 }

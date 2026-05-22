@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createWorker = `-- name: CreateWorker :one
+INSERT INTO workers (id)
+VALUES ($1)
+RETURNING id
+`
+
+func (q *Queries) CreateWorker(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, createWorker, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const getWorker = `-- name: GetWorker :one
 SELECT id FROM workers
 WHERE id = $1

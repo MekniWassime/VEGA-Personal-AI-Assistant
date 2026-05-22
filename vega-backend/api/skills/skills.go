@@ -21,9 +21,14 @@ type SkillPromptInfo struct {
 	Example string `json:"example"`
 }
 
+type RunResult struct {
+	Content string
+	Suspend bool
+}
+
 type Skill interface {
 	Info() *SkillPromptInfo
-	Run(input string) (string, error)
+	Run(input string) (RunResult, error)
 }
 
 var registeredSkills = []Skill{
@@ -102,20 +107,29 @@ func ExtractSkillCall(content string) (string, bool) {
 	return "", false
 }
 
-func runSkill(input string) (string, error) {
+
+type SkillResult struct {
+	Content string
+	Suspend bool
+}
+
+func runSkill(input string) (RunResult, error) {
 	skill, parsed, err := ParseAndMatch(input)
 	if err != nil {
-		return "", err
+		return RunResult{}, err
 	}
 	return (*skill).Run(string(parsed.Arguments))
 }
 
-func ParseAndRun(input string) string {
+func ParseAndRun(input string) SkillResult {
 	result, err := runSkill(input)
 	if err != nil {
-		return "[TOOL CALL ERROR]\n" + err.Error() + "\n[END TOOL CALL ERROR]\nFix the error and try the tool call again."
+		return SkillResult{Content: "[TOOL CALL ERROR]\n" + err.Error() + "\n[END TOOL CALL ERROR]\nFix the error and try the tool call again."}
 	}
-	return "[TOOL CALL RESULT]\n" + result + "\n[END TOOL CALL RESULT]\nWith this result, continue your task."
+	if result.Suspend {
+		return SkillResult{Suspend: true}
+	}
+	return SkillResult{Content: "[TOOL CALL RESULT]\n" + result.Content + "\n[END TOOL CALL RESULT]\nWith this result, continue your task."}
 }
 
 func ParseAndMatch(input string) (*Skill, *ParseInput, error) {

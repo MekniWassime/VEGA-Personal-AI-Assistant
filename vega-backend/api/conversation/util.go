@@ -5,6 +5,7 @@ import (
 	"vega/api/ai"
 	db "vega/api/internal/database"
 	"vega/api/system"
+	"vega/api/worker"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -42,6 +43,7 @@ func AppendMessage(ctx context.Context, q *db.Queries, conversationID pgtype.UUI
 		ContextID: dbCtx.ID,
 		Role:      message.Role,
 		Content:   message.Content,
+		WorkerID:  worker.ID(),
 	})
 	return err
 }

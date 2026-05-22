@@ -25,21 +25,21 @@ type skillDefinitionArgs struct {
 	SkillName string `json:"skill_name"`
 }
 
-func (s *SkillDefinitionSkill) Run(input string) (string, error) {
+func (s *SkillDefinitionSkill) Run(input string) (RunResult, error) {
 	var p skillDefinitionArgs
 	if err := json.Unmarshal([]byte(input), &p); err != nil {
-		return "", fmt.Errorf("failed to parse arguments: %w — expected {\"skill_name\": \"...\"}", err)
+		return RunResult{}, fmt.Errorf("failed to parse arguments: %w — expected {\"skill_name\": \"...\"}", err)
 	}
 	if p.SkillName == "" {
-		return "", fmt.Errorf("skill_name is required")
+		return RunResult{}, fmt.Errorf("skill_name is required")
 	}
 	skill, ok := skillsByName[p.SkillName]
 	if !ok {
-		return "", fmt.Errorf("no skill found with name %q", p.SkillName)
+		return RunResult{}, fmt.Errorf("no skill found with name %q", p.SkillName)
 	}
 	info := skill.Info()
-	return fmt.Sprintf(
+	return RunResult{Content: fmt.Sprintf(
 		"[SKILL DEFINITION]\nName: %s\n\nDescription:\n%s\n\nExample usage:\n%s\n\n[END SKILL DEFINITION]\nThis was the skill definition, not the skill call itself. Now call the skill using the example above as a reference.",
 		info.Name, info.Content, info.Example,
-	), nil
+	)}, nil
 }

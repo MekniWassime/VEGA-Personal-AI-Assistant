@@ -35,7 +35,10 @@ func ProcessConversation(ctx context.Context, q *db.Queries, client ai.ModelAPI,
 
 		if call, ok := skills.ExtractSkillCall(resp.Content); ok {
 			result := skills.ParseAndRun(call)
-			if err := persistMessage(ctx, q, conversationID, &messages, ai.Message{Role: "system", Content: result}); err != nil {
+			if result.Suspend {
+				break
+			}
+			if err := persistMessage(ctx, q, conversationID, &messages, ai.Message{Role: "system", Content: result.Content}); err != nil {
 				return fmt.Errorf("failed to persist skill result: %w", err)
 			}
 		}

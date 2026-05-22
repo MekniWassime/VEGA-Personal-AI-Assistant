@@ -7,6 +7,7 @@ import (
 	"vega/api/ai"
 	"vega/api/conversation"
 	db "vega/api/internal/database"
+	"vega/api/worker"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
@@ -28,6 +29,11 @@ func main() {
 	defer conn.Close(ctx)
 
 	queries := db.New(conn)
+
+	if err := worker.Init(ctx, queries); err != nil {
+		log.Fatalf("failed to initialize worker: %v", err)
+	}
+
 	client := ai.NewOllamaAPI("gemma3:4b")
 
 	conversationID, err := conversation.StartConversation(ctx, queries, db.ConversationTypeTask, ai.Message{

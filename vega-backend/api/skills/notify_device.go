@@ -26,18 +26,18 @@ type notifyDeviceArgs struct {
 	Message  string `json:"message"`
 }
 
-func (n *NotifyDeviceSkill) Run(input string) (string, error) {
+func (n *NotifyDeviceSkill) Run(input string) (RunResult, error) {
 	var p notifyDeviceArgs
 	if err := json.Unmarshal([]byte(input), &p); err != nil {
-		return "", fmt.Errorf("failed to parse arguments: %w — expected {\"device_id\": \"...\", \"message\": \"...\"}", err)
+		return RunResult{}, fmt.Errorf("failed to parse arguments: %w — expected {\"device_id\": \"...\", \"message\": \"...\"}", err)
 	}
 	if p.DeviceID == "" {
-		return "", fmt.Errorf("device_id is required")
+		return RunResult{}, fmt.Errorf("device_id is required")
 	}
 	if p.Message == "" {
-		return "", fmt.Errorf("message is required")
+		return RunResult{}, fmt.Errorf("message is required")
 	}
 
 	fmt.Printf("[notify_device] device: %s | message: %s\n", p.DeviceID, p.Message)
-	return fmt.Sprintf("Notification sent to device %q: %q", p.DeviceID, p.Message), nil
+	return RunResult{Content: fmt.Sprintf("Notification sent to device %q: %q", p.DeviceID, p.Message)}, nil
 }
