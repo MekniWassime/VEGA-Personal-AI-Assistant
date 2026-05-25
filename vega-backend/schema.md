@@ -6,7 +6,7 @@ Context: id, conversation_id, timestamp
 
 Message: serial id ,context_id, role, content, timestamp, worker_id
 
-JobQueue: id, type, content, timestamp, worker_id, state[pending, processing, processed, errored], locked_until
+JobQueue: id, type, content, timestamp, worker_id, state[pending, processing, waiting, processed, errored], locked_until
 
 Device: id, context, deviceToken
 

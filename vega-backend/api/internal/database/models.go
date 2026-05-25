@@ -97,6 +97,51 @@ func (ns NullConversationType) Value() (driver.Value, error) {
 	return string(ns.ConversationType), nil
 }
 
+type JobState string
+
+const (
+	JobStatePending    JobState = "pending"
+	JobStateProcessing JobState = "processing"
+	JobStateWaiting    JobState = "waiting"
+	JobStateProcessed  JobState = "processed"
+	JobStateErrored    JobState = "errored"
+)
+
+func (e *JobState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = JobState(s)
+	case string:
+		*e = JobState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for JobState: %T", src)
+	}
+	return nil
+}
+
+type NullJobState struct {
+	JobState JobState
+	Valid    bool // Valid is true if JobState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullJobState) Scan(value interface{}) error {
+	if value == nil {
+		ns.JobState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.JobState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullJobState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.JobState), nil
+}
+
 type Context struct {
 	ID             pgtype.UUID
 	ConversationID pgtype.UUID
@@ -109,6 +154,16 @@ type Conversation struct {
 	Type      ConversationType
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type JobQueue struct {
+	ID          pgtype.UUID
+	Content     string
+	Timestamp   pgtype.Timestamptz
+	WorkerID    pgtype.UUID
+	State       JobState
+	LockedUntil pgtype.Timestamptz
+	Payload     []byte
 }
 
 type Message struct {
