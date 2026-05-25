@@ -1,9 +1,11 @@
 package skills
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
+	db "vega/api/internal/database"
 )
 
 const skillBasePrompt = `
@@ -28,7 +30,7 @@ type RunResult struct {
 
 type Skill interface {
 	Info() *SkillPromptInfo
-	Run(input string) (RunResult, error)
+	Run(ctx context.Context, q *db.Queries, input string) (RunResult, error)
 }
 
 var registeredSkills = []Skill{
@@ -113,16 +115,16 @@ type SkillResult struct {
 	Suspend bool
 }
 
-func runSkill(input string) (RunResult, error) {
+func runSkill(ctx context.Context, q *db.Queries, input string) (RunResult, error) {
 	skill, parsed, err := ParseAndMatch(input)
 	if err != nil {
 		return RunResult{}, err
 	}
-	return (*skill).Run(string(parsed.Arguments))
+	return (*skill).Run(ctx, q, string(parsed.Arguments))
 }
 
-func ParseAndRun(input string) SkillResult {
-	result, err := runSkill(input)
+func ParseAndRun(ctx context.Context, q *db.Queries, input string) SkillResult {
+	result, err := runSkill(ctx, q, input)
 	if err != nil {
 		return SkillResult{Content: "[TOOL CALL ERROR]\n" + err.Error() + "\n[END TOOL CALL ERROR]\nFix the error and try the tool call again."}
 	}

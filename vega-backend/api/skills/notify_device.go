@@ -1,8 +1,10 @@
 package skills
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	db "vega/api/internal/database"
 )
 
 var notifyDeviceInfo = SkillPromptInfo{
@@ -26,7 +28,7 @@ type notifyDeviceArgs struct {
 	Message  string `json:"message"`
 }
 
-func (n *NotifyDeviceSkill) Run(input string) (RunResult, error) {
+func (n *NotifyDeviceSkill) Run(ctx context.Context, q *db.Queries, input string) (RunResult, error) {
 	var p notifyDeviceArgs
 	if err := json.Unmarshal([]byte(input), &p); err != nil {
 		return RunResult{}, fmt.Errorf("failed to parse arguments: %w — expected {\"device_id\": \"...\", \"message\": \"...\"}", err)

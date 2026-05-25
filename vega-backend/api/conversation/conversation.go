@@ -34,7 +34,7 @@ func ProcessConversation(ctx context.Context, q *db.Queries, client ai.ModelAPI,
 		}
 
 		if call, ok := skills.ExtractSkillCall(resp.Content); ok {
-			result := skills.ParseAndRun(call)
+			result := skills.ParseAndRun(ctx, q, call)
 			if result.Suspend {
 				break
 			}

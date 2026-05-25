@@ -14,22 +14,23 @@ import (
 const claimJob = `-- name: ClaimJob :one
 UPDATE job_queue
 SET state = 'processing',
-    locked_until = now() + $2::interval
+    locked_until = now() + $2::interval,
+    worker_id = $3
 WHERE id = $1
-RETURNING id, content, timestamp, worker_id, state, locked_until, payload
+RETURNING id, timestamp, worker_id, state, locked_until, payload
 `
 
 type ClaimJobParams struct {
-	ID      pgtype.UUID
-	Column2 pgtype.Interval
+	ID       pgtype.UUID
+	Column2  pgtype.Interval
+	WorkerID pgtype.UUID
 }
 
 func (q *Queries) ClaimJob(ctx context.Context, arg ClaimJobParams) (JobQueue, error) {
-	row := q.db.QueryRow(ctx, claimJob, arg.ID, arg.Column2)
+	row := q.db.QueryRow(ctx, claimJob, arg.ID, arg.Column2, arg.WorkerID)
 	var i JobQueue
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.Timestamp,
 		&i.WorkerID,
 		&i.State,
@@ -50,7 +51,7 @@ WHERE id = (
     LIMIT 1
     FOR UPDATE SKIP LOCKED
 )
-RETURNING id, content, timestamp, worker_id, state, locked_until, payload
+RETURNING id, timestamp, worker_id, state, locked_until, payload
 `
 
 func (q *Queries) Dequeue(ctx context.Context, dollar_1 pgtype.Interval) (JobQueue, error) {
@@ -58,7 +59,6 @@ func (q *Queries) Dequeue(ctx context.Context, dollar_1 pgtype.Interval) (JobQue
 	var i JobQueue
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.Timestamp,
 		&i.WorkerID,
 		&i.State,
@@ -69,22 +69,21 @@ func (q *Queries) Dequeue(ctx context.Context, dollar_1 pgtype.Interval) (JobQue
 }
 
 const enqueue = `-- name: Enqueue :one
-INSERT INTO job_queue (content, worker_id)
+INSERT INTO job_queue (payload, worker_id)
 VALUES ($1, $2)
-RETURNING id, content, timestamp, worker_id, state, locked_until, payload
+RETURNING id, timestamp, worker_id, state, locked_until, payload
 `
 
 type EnqueueParams struct {
-	Content  string
+	Payload  []byte
 	WorkerID pgtype.UUID
 }
 
 func (q *Queries) Enqueue(ctx context.Context, arg EnqueueParams) (JobQueue, error) {
-	row := q.db.QueryRow(ctx, enqueue, arg.Content, arg.WorkerID)
+	row := q.db.QueryRow(ctx, enqueue, arg.Payload, arg.WorkerID)
 	var i JobQueue
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.Timestamp,
 		&i.WorkerID,
 		&i.State,
@@ -98,7 +97,7 @@ const setDone = `-- name: SetDone :one
 UPDATE job_queue
 SET state = 'processed'
 WHERE id = $1
-RETURNING id, content, timestamp, worker_id, state, locked_until, payload
+RETURNING id, timestamp, worker_id, state, locked_until, payload
 `
 
 func (q *Queries) SetDone(ctx context.Context, id pgtype.UUID) (JobQueue, error) {
@@ -106,7 +105,6 @@ func (q *Queries) SetDone(ctx context.Context, id pgtype.UUID) (JobQueue, error)
 	var i JobQueue
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.Timestamp,
 		&i.WorkerID,
 		&i.State,
@@ -120,7 +118,7 @@ const setErrored = `-- name: SetErrored :one
 UPDATE job_queue
 SET state = 'errored'
 WHERE id = $1
-RETURNING id, content, timestamp, worker_id, state, locked_until, payload
+RETURNING id, timestamp, worker_id, state, locked_until, payload
 `
 
 func (q *Queries) SetErrored(ctx context.Context, id pgtype.UUID) (JobQueue, error) {
@@ -128,7 +126,6 @@ func (q *Queries) SetErrored(ctx context.Context, id pgtype.UUID) (JobQueue, err
 	var i JobQueue
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.Timestamp,
 		&i.WorkerID,
 		&i.State,
@@ -142,7 +139,7 @@ const setWaiting = `-- name: SetWaiting :one
 UPDATE job_queue
 SET state = 'waiting'
 WHERE id = $1
-RETURNING id, content, timestamp, worker_id, state, locked_until, payload
+RETURNING id, timestamp, worker_id, state, locked_until, payload
 `
 
 func (q *Queries) SetWaiting(ctx context.Context, id pgtype.UUID) (JobQueue, error) {
@@ -150,7 +147,6 @@ func (q *Queries) SetWaiting(ctx context.Context, id pgtype.UUID) (JobQueue, err
 	var i JobQueue
 	err := row.Scan(
 		&i.ID,
-		&i.Content,
 		&i.Timestamp,
 		&i.WorkerID,
 		&i.State,

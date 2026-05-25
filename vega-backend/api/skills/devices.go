@@ -1,5 +1,12 @@
 package skills
 
+import (
+	"context"
+	db "vega/api/internal/database"
+	"vega/api/jobqueue"
+	"vega/api/worker"
+)
+
 var promptInfo = SkillPromptInfo{
 	Name:    "list_devices",
 	Summary: "list the user's device identifiers and information — you will need these identifiers to execute skills on the user's devices",
@@ -18,10 +25,9 @@ func (d *DevicesSkill) Info() *SkillPromptInfo {
 
 type devicesSchema struct{}
 
-func (d *DevicesSkill) Run(input string) (RunResult, error) {
-	var devices = `[
-{"id": "mobile_device_1", "description": "my personal samsung mobile phone"},
-{"id": "macbook_work_1", "description": "my work macbook pro that I also use for personal stuff"}
-]`
-	return RunResult{Content: devices}, nil
+func (d *DevicesSkill) Run(ctx context.Context, q *db.Queries, input string) (RunResult, error) {
+	if _, err := jobqueue.Enqueue(ctx, q, []byte(`{"name":"list_devices"}`), worker.ID()); err != nil {
+		return RunResult{}, err
+	}
+	return RunResult{Suspend: true}, nil
 }

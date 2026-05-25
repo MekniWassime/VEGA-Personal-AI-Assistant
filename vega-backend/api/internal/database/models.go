@@ -158,7 +158,6 @@ type Conversation struct {
 
 type JobQueue struct {
 	ID          pgtype.UUID
-	Content     string
 	Timestamp   pgtype.Timestamptz
 	WorkerID    pgtype.UUID
 	State       JobState

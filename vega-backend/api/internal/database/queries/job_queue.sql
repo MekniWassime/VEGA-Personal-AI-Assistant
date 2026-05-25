@@ -1,5 +1,5 @@
 -- name: Enqueue :one
-INSERT INTO job_queue (content, worker_id)
+INSERT INTO job_queue (payload, worker_id)
 VALUES ($1, $2)
 RETURNING *;
 
@@ -37,6 +37,7 @@ RETURNING *;
 -- name: ClaimJob :one
 UPDATE job_queue
 SET state = 'processing',
-    locked_until = now() + $2::interval
+    locked_until = now() + $2::interval,
+    worker_id = $3
 WHERE id = $1
 RETURNING *;

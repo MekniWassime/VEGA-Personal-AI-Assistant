@@ -1,8 +1,10 @@
 package skills
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	db "vega/api/internal/database"
 )
 
 var skillDefinitionInfo = SkillPromptInfo{
@@ -25,7 +27,7 @@ type skillDefinitionArgs struct {
 	SkillName string `json:"skill_name"`
 }
 
-func (s *SkillDefinitionSkill) Run(input string) (RunResult, error) {
+func (s *SkillDefinitionSkill) Run(ctx context.Context, q *db.Queries, input string) (RunResult, error) {
 	var p skillDefinitionArgs
 	if err := json.Unmarshal([]byte(input), &p); err != nil {
 		return RunResult{}, fmt.Errorf("failed to parse arguments: %w — expected {\"skill_name\": \"...\"}", err)
