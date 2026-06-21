@@ -1,15 +1,21 @@
 package skills
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
+	db "vega/api/internal/database"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const skillBasePrompt = `
-	You have access to these skills, These are tool calls that allow you to perform actions and interact with devices and external tools,
-	You would need to respond only with the tool call with no other text, only the tool call json should be present if you would like to call a tool
-	Here are a list of available skills:
+You have access to these skills. These are tool calls that allow you to perform actions and interact with devices and external tools.
+To call a skill, wrap the JSON in a <tool_call> tag anywhere in your message: <tool_call>{"name": "skill_name", "arguments": {...}}</tool_call>
+The system will notify you of the result. If no notification was received, your tool call format is wrong — try again.
+If the response is marked as from "assistant" or "user" then it is not the result of a tool call.
+Review the list of available skills carefully:
 `
 
 type SkillPromptInfo struct {
@@ -19,9 +25,14 @@ type SkillPromptInfo struct {
 	Example string `json:"example"`
 }
 
+type RunResult struct {
+	Content string
+	Suspend bool
+}
+
 type Skill interface {
 	Info() *SkillPromptInfo
-	Run(input string) (string, error)
+	Run(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) (RunResult, error)
 }
 
 var registeredSkills = []Skill{
@@ -52,27 +63,38 @@ func buildSkillsPrompt() string {
 
 var SkillsPrompt = buildSkillsPrompt()
 
-func BuildSystemPrompt(basePrompt string) string {
-	return basePrompt + "\n" + SkillsPrompt
-}
-
 type ParseInput struct {
 	Name   string          `json:"name"`
-	Params json.RawMessage `json:"params"`
+	Arguments json.RawMessage `json:"arguments"`
 }
 
-// extractSkillCall tries to find a skill call in common AI response formats.
+// ExtractSkillCall tries to find a skill call in common AI response formats.
 // Returns the normalised call string and true if a skill call was detected.
 func ExtractSkillCall(content string) (string, bool) {
 	s := strings.TrimSpace(content)
 
-	// strip markdown code fences: ```json ... ``` or ``` ... ```
-	for _, fence := range []string{"```json", "```"} {
-		if strings.HasPrefix(s, fence) {
-			s = strings.TrimPrefix(s, fence)
-			s = strings.TrimSuffix(s, "```")
-			s = strings.TrimSpace(s)
-			break
+	// strip <think>...</think> blocks emitted by reasoning models
+	if start := strings.Index(s, "<think>"); start != -1 {
+		if end := strings.Index(s, "</think>"); end != -1 {
+			s = strings.TrimSpace(s[:start] + s[end+len("</think>"):])
+		}
+	}
+
+	// prefer <tool_call>...</tool_call> tags
+	if start := strings.Index(s, "<tool_call>"); start != -1 {
+		after := s[start+len("<tool_call>"):]
+		if end := strings.Index(after, "</tool_call>"); end != -1 {
+			s = strings.TrimSpace(after[:end])
+		}
+	} else if idx := strings.Index(s, "```"); idx != -1 {
+		// fall back to code fence
+		after := s[idx:]
+		if start := strings.Index(after, "{"); start != -1 {
+			after = after[start:]
+			if end := strings.Index(after, "```"); end != -1 {
+				after = after[:end]
+			}
+			s = strings.TrimSpace(after)
 		}
 	}
 
@@ -89,16 +111,29 @@ func ExtractSkillCall(content string) (string, bool) {
 	return "", false
 }
 
-func ParseAndRun(input string) string {
+
+type SkillResult struct {
+	Content string
+	Suspend bool
+}
+
+func runSkill(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) (RunResult, error) {
 	skill, parsed, err := ParseAndMatch(input)
 	if err != nil {
-		return err.Error()
+		return RunResult{}, err
 	}
-	result, err := (*skill).Run(string(parsed.Params))
+	return (*skill).Run(ctx, q, conversationID, string(parsed.Arguments))
+}
+
+func ParseAndRun(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) SkillResult {
+	result, err := runSkill(ctx, q, conversationID, input)
 	if err != nil {
-		return err.Error()
+		return SkillResult{Content: "[TOOL CALL ERROR]\n" + err.Error() + "\n[END TOOL CALL ERROR]\nFix the error and try the tool call again."}
 	}
-	return result
+	if result.Suspend {
+		return SkillResult{Suspend: true}
+	}
+	return SkillResult{Content: "[TOOL CALL RESULT]\n" + result.Content + "\n[END TOOL CALL RESULT]\nWith this result, continue your task."}
 }
 
 func ParseAndMatch(input string) (*Skill, *ParseInput, error) {

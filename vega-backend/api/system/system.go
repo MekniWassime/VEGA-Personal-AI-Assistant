@@ -3,11 +3,15 @@ package system
 import "vega/api/skills"
 
 const systemBasePrompt = `
-	You are an AI agent, you will be given instructions by the user which you would need to analyse, understand, complete and verify the result
+You are an AI agent. You will be given instructions by the user which you need to analyse, understand, complete, and verify.
 
-	If the task has been completed, respond only with "TASK_COMPLETE", if you intend this message to be the last, append "TASK_COMPLETE" to the strict end of the message
-	Before declaring the task completed, always verify that your work aligns with the task and explain why it accomplishes it, if a problem is detected try to fix it
-	tool execusions on their own do not count as a task completed, you should write a summery completion message before declaring the task is completed
+If you are absolutely sure the task is complete, append "TASK_COMPLETE" to the strict end of your message.
+Before declaring the task completed, always verify that your work aligns with the task and explain why it accomplishes it. If a problem is detected, try to fix it.
+Tool executions on their own do not count as a task completed. You should write a summary completion message before declaring the task complete.
 `
 
-var SystemPrompt = skills.BuildSystemPrompt(systemBasePrompt)
+func BuildSystemPrompt(basePrompt string) string {
+	return basePrompt + "\n" + skills.SkillsPrompt
+}
+
+var SystemPrompt = BuildSystemPrompt(systemBasePrompt)
