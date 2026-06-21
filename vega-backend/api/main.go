@@ -2,49 +2,93 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
 	"os"
-	"vega/api/ai"
-	"vega/api/conversation"
+	"os/signal"
+	"syscall"
+	"time"
 	db "vega/api/internal/database"
+	"vega/api/jobprocess"
 	"vega/api/worker"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
-
-const userPrompt = "figure out the brand of my mobile device and send it to my macbook"
 
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	conn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
+	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	defer conn.Close(ctx)
+	defer pool.Close()
 
-	queries := db.New(conn)
+	queries := db.New(pool)
 
 	if err := worker.Init(ctx, queries); err != nil {
 		log.Fatalf("failed to initialize worker: %v", err)
 	}
 
-	client := ai.NewOllamaAPI("gemma3:4b")
+	go jobprocess.Drain(ctx, queries)
 
-	conversationID, err := conversation.StartConversation(ctx, queries, db.ConversationTypeTask, ai.Message{
-		Role:    "user",
-		Content: userPrompt,
-	})
+	// dedicated connection for LISTEN/NOTIFY — it stays blocked on
+	// WaitForNotification, so it cannot be shared with the pool.
+	listenConn, err := pgx.Connect(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Fatalf("failed to start conversation: %v", err)
+		log.Fatalf("failed to open listener connection: %v", err)
+	}
+	defer listenConn.Close(context.Background())
+
+	go func() {
+		if err := jobprocess.Listen(ctx, listenConn, queries); err != nil {
+			log.Printf("[main] listener stopped: %v", err)
+		}
+	}()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		if err := pool.Ping(r.Context()); err != nil {
+			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
-	if err := conversation.ProcessConversation(ctx, queries, client, conversationID); err != nil {
-		log.Fatalf("conversation error: %v", err)
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
 	}
+
+	go func() {
+		log.Printf("[main] listening on :%s", port)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	log.Println("[main] shutting down...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("graceful shutdown failed: %v", err)
+	}
+	log.Println("[main] stopped")
 }

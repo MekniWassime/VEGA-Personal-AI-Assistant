@@ -11,6 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+func AppendAndProcess(ctx context.Context, q *db.Queries, client ai.ModelAPI, conversationID pgtype.UUID, message ai.Message) error {
+	if err := AppendMessage(ctx, q, conversationID, message); err != nil {
+		return fmt.Errorf("failed to append message: %w", err)
+	}
+	return ProcessConversation(ctx, q, client, conversationID)
+}
+
 func ProcessConversation(ctx context.Context, q *db.Queries, client ai.ModelAPI, conversationID pgtype.UUID) error {
 	messages, err := ConstructContext(ctx, q, conversationID)
 	if err != nil {
@@ -34,7 +41,7 @@ func ProcessConversation(ctx context.Context, q *db.Queries, client ai.ModelAPI,
 		}
 
 		if call, ok := skills.ExtractSkillCall(resp.Content); ok {
-			result := skills.ParseAndRun(ctx, q, call)
+			result := skills.ParseAndRun(ctx, q, conversationID, call)
 			if result.Suspend {
 				break
 			}

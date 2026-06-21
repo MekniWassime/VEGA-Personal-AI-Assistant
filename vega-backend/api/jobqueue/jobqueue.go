@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 	db "vega/api/internal/database"
 	"vega/api/worker"
 
@@ -16,6 +17,11 @@ var (
 	ErrNoJob             = errors.New("no job available")
 )
 
+// toInterval converts a time.Duration into a pgtype.Interval.
+func toInterval(d time.Duration) pgtype.Interval {
+	return pgtype.Interval{Microseconds: d.Microseconds(), Valid: true}
+}
+
 func Enqueue(ctx context.Context, q *db.Queries, payload []byte, workerID pgtype.UUID) (db.JobQueue, error) {
 	job, err := q.Enqueue(ctx, db.EnqueueParams{Payload: payload, WorkerID: workerID})
 	if err != nil {
@@ -25,13 +31,8 @@ func Enqueue(ctx context.Context, q *db.Queries, payload []byte, workerID pgtype
 	return job, nil
 }
 
-func Dequeue(ctx context.Context, q *db.Queries, lockDuration string) (db.JobQueue, error) {
-	interval := pgtype.Interval{}
-	if err := interval.Scan(lockDuration); err != nil {
-		return db.JobQueue{}, fmt.Errorf("invalid lock duration %q: %w", lockDuration, err)
-	}
-
-	job, err := q.Dequeue(ctx, interval)
+func Dequeue(ctx context.Context, q *db.Queries, lockDuration time.Duration) (db.JobQueue, error) {
+	job, err := q.Dequeue(ctx, toInterval(lockDuration))
 	if err != nil {
 		return db.JobQueue{}, ErrNoJob
 	}
@@ -75,17 +76,12 @@ func SetWaiting(ctx context.Context, q *db.Queries, job db.JobQueue) (db.JobQueu
 	return updated, nil
 }
 
-func Claim(ctx context.Context, q *db.Queries, job db.JobQueue, lockDuration string) (db.JobQueue, error) {
+func Claim(ctx context.Context, q *db.Queries, job db.JobQueue, lockDuration time.Duration) (db.JobQueue, error) {
 	if job.State != db.JobStateWaiting {
 		return db.JobQueue{}, fmt.Errorf("%w: %s -> processing", ErrInvalidTransition, job.State)
 	}
 
-	interval := pgtype.Interval{}
-	if err := interval.Scan(lockDuration); err != nil {
-		return db.JobQueue{}, fmt.Errorf("invalid lock duration %q: %w", lockDuration, err)
-	}
-
-	updated, err := q.ClaimJob(ctx, db.ClaimJobParams{ID: job.ID, Column2: interval, WorkerID: worker.ID()})
+	updated, err := q.ClaimJob(ctx, db.ClaimJobParams{ID: job.ID, Column2: toInterval(lockDuration), WorkerID: worker.ID()})
 	if err != nil {
 		return db.JobQueue{}, err
 	}

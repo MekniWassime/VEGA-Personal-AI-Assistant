@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	db "vega/api/internal/database"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var notifyDeviceInfo = SkillPromptInfo{
@@ -28,7 +30,7 @@ type notifyDeviceArgs struct {
 	Message  string `json:"message"`
 }
 
-func (n *NotifyDeviceSkill) Run(ctx context.Context, q *db.Queries, input string) (RunResult, error) {
+func (n *NotifyDeviceSkill) Run(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) (RunResult, error) {
 	var p notifyDeviceArgs
 	if err := json.Unmarshal([]byte(input), &p); err != nil {
 		return RunResult{}, fmt.Errorf("failed to parse arguments: %w — expected {\"device_id\": \"...\", \"message\": \"...\"}", err)

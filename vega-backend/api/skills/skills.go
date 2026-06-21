@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	db "vega/api/internal/database"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const skillBasePrompt = `
@@ -30,7 +32,7 @@ type RunResult struct {
 
 type Skill interface {
 	Info() *SkillPromptInfo
-	Run(ctx context.Context, q *db.Queries, input string) (RunResult, error)
+	Run(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) (RunResult, error)
 }
 
 var registeredSkills = []Skill{
@@ -115,16 +117,16 @@ type SkillResult struct {
 	Suspend bool
 }
 
-func runSkill(ctx context.Context, q *db.Queries, input string) (RunResult, error) {
+func runSkill(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) (RunResult, error) {
 	skill, parsed, err := ParseAndMatch(input)
 	if err != nil {
 		return RunResult{}, err
 	}
-	return (*skill).Run(ctx, q, string(parsed.Arguments))
+	return (*skill).Run(ctx, q, conversationID, string(parsed.Arguments))
 }
 
-func ParseAndRun(ctx context.Context, q *db.Queries, input string) SkillResult {
-	result, err := runSkill(ctx, q, input)
+func ParseAndRun(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) SkillResult {
+	result, err := runSkill(ctx, q, conversationID, input)
 	if err != nil {
 		return SkillResult{Content: "[TOOL CALL ERROR]\n" + err.Error() + "\n[END TOOL CALL ERROR]\nFix the error and try the tool call again."}
 	}

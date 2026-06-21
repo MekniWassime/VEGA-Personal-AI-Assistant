@@ -2,9 +2,13 @@ package skills
 
 import (
 	"context"
+	"encoding/json"
 	db "vega/api/internal/database"
 	"vega/api/jobqueue"
 	"vega/api/worker"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var promptInfo = SkillPromptInfo{
@@ -25,8 +29,18 @@ func (d *DevicesSkill) Info() *SkillPromptInfo {
 
 type devicesSchema struct{}
 
-func (d *DevicesSkill) Run(ctx context.Context, q *db.Queries, input string) (RunResult, error) {
-	if _, err := jobqueue.Enqueue(ctx, q, []byte(`{"name":"list_devices"}`), worker.ID()); err != nil {
+func (d *DevicesSkill) Run(ctx context.Context, q *db.Queries, conversationID pgtype.UUID, input string) (RunResult, error) {
+	payload, err := json.Marshal(map[string]any{
+		"name": "list_devices",
+		"arguments": map[string]string{
+			"conversation_id": uuid.UUID(conversationID.Bytes).String(),
+		},
+	})
+	if err != nil {
+		return RunResult{}, err
+	}
+
+	if _, err := jobqueue.Enqueue(ctx, q, payload, worker.ID()); err != nil {
 		return RunResult{}, err
 	}
 	return RunResult{Suspend: true}, nil
