@@ -1,0 +1,11 @@
+# Workspace root — a single shared lockfile lives here.
+.dart_tool/
+.packages
+build/
+
+# Melos
+.melos_tool/
+
+# IDE
+.idea/
+*.iml

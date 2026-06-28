@@ -1,0 +1,43 @@
+name: vega_client
+description: "VEGA client monorepo — workspace root."
+publish_to: "none"
+
+environment:
+  sdk: ^3.11.4
+
+# Dart pub workspace. A single, shared resolution is computed for every member
+# package, and Melos derives the package list from this section.
+workspace:
+  - apps/vega_app
+  - packages/core
+
+dev_dependencies:
+  melos: ^7.8.1
+
+# Melos configuration. In workspace mode Melos reads its config from here
+# (the `workspace:` list above doubles as the package list).
+melos:
+  scripts:
+    analyze:
+      description: Analyze every package.
+      run: dart analyze .
+      exec:
+        concurrency: 1
+        failFast: true
+
+    format:
+      description: Format all Dart code.
+      run: dart format .
+
+    format:check:
+      description: Verify all Dart code is formatted.
+      run: dart format --output none --set-exit-if-changed .
+
+    test:
+      description: Run tests in every package that has them.
+      run: flutter test
+      exec:
+        concurrency: 1
+        failFast: true
+      packageFilters:
+        dirExists: test
