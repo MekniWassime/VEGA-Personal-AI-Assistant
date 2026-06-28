@@ -7,6 +7,9 @@ environment:
   sdk: ^3.11.4
   flutter: ">=1.17.0"
 
+# Resolve dependencies from the shared workspace at the repo root.
+resolution: workspace
+
 dependencies:
   flutter:
     sdk: flutter
